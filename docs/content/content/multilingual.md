@@ -79,9 +79,9 @@ A full example of the language-switching links would be:
             {{ range $txLang := .Site.Languages }}
               {{if ne $lang $txLang}}
                 {{if isset $.Translations $txLang}}
-                  <a href="{{ (index $.Translations $txLang).Permalink }}">{{ i18n ( sprintf "language_switcher_%s" $txLang ) }}</a>
+                  <a href="{{ (index $.Translations $txLang).Permalink }}">{{ i18n ( printf "language_switcher_%s" $txLang ) }}</a>
                 {{else}}
-                  <a href="/{{$txLang}}">{{ i18n ( sprintf "language_switcher_%s" $txLang ) }}</a>
+                  <a href="/{{$txLang}}">{{ i18n ( printf "language_switcher_%s" $txLang ) }}</a>
                 {{end}}
               {{end}}
             {{end}}
@@ -90,7 +90,7 @@ A full example of the language-switching links would be:
           {{if .IsNode}}
             {{ range $txLang := .Site.Languages }}
               {{if ne $lang $txLang}}
-                <a href="/{{$txLang}}">{{ i18n ( sprintf "language_switcher_%s" $txLang ) }}</a>
+                <a href="/{{$txLang}}">{{ i18n ( printf "language_switcher_%s" $txLang ) }}</a>
               {{end}}
             {{end}}
           {{end}}

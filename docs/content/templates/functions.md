@@ -369,12 +369,12 @@ e.g.
 
 ## Strings
 
-### sprintf
+### printf
 
 Format a string using the standard `fmt.Sprintf` function. See [the go
 doc](https://golang.org/pkg/fmt/) for reference.
 
-e.g., `{{ i18n ( sprintf "combined_%s" $var ) }}` or `{{ sprintf "formatted %.2f" 3.1416 }}`
+e.g., `{{ i18n ( printf "combined_%s" $var ) }}` or `{{ printf "formatted %.2f" 3.1416 }}`
 
 ### chomp
 Removes any trailing newline characters. Useful in a pipeline to remove newlines added by other processing (including `markdownify`).
