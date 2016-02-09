@@ -22,8 +22,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// All paths are relative from the source directory base
 type File struct {
-	relpath     string // Original Full Path eg. /Users/Home/Hugo/foo.txt
+	relpath     string // Original Full Path eg. content/foo.txt
 	logicalName string // foo.txt
 	baseName    string // `post` for `post.md`, also `post.en` for `post.en.md`
 	Contents    io.Reader
@@ -36,6 +37,7 @@ type File struct {
 	lang                string // The language code if `Multilingual` is enabled
 }
 
+// UniqueID: MD5 of the filename
 func (f *File) UniqueID() string {
 	return f.uniqueID
 }
@@ -48,7 +50,7 @@ func (f *File) Bytes() []byte {
 	return helpers.ReaderToBytes(f.Contents)
 }
 
-// Filename without extension
+// BaseFileName Filename without extension
 func (f *File) BaseFileName() string {
 	return f.baseName
 }
@@ -63,10 +65,12 @@ func (f *File) Lang() string {
 	return f.lang
 }
 
+// Section The first directory
 func (f *File) Section() string {
 	return f.section
 }
 
+// LogicalName The filename and extension of the file
 func (f *File) LogicalName() string {
 	return f.logicalName
 }
@@ -87,6 +91,7 @@ func (f *File) Ext() string {
 	return f.Extension()
 }
 
+// Path the relative path including file name and extension from the base of the source directory
 func (f *File) Path() string {
 	return f.relpath
 }
