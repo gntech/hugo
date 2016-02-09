@@ -85,6 +85,7 @@ type Site struct {
 	Targets         targetList
 	targetListInit  sync.Once
 	RunMode         runmode
+	Multilingual    *Multilingual
 	params          map[string]interface{}
 	draftCount      int
 	futureCount     int
@@ -124,11 +125,10 @@ type SiteInfo struct {
 	paginationPageCount   uint64
 	Data                  *map[string]interface{}
 
-	Multilingual       bool
-	RenderLanguage     string
-	LanguagePrefix     string
-	LinkLanguages      []string
-	DefaultContentLang string
+	Multilingual           bool
+	CurrentLanguage        string
+	LanguagePrefix         string
+	Languages              []string
 }
 
 // SiteSocial is a place to put social details on a site level. These are the
@@ -154,17 +154,17 @@ func (s *SiteInfo) GetParam(key string) interface{} {
 		return nil
 	}
 
-	switch v.(type) {
+	switch val := v.(type) {
 	case bool:
-		return cast.ToBool(v)
+		return val
 	case string:
-		return cast.ToString(v)
+		return val
 	case int64, int32, int16, int8, int:
 		return cast.ToInt(v)
 	case float64, float32:
 		return cast.ToFloat64(v)
 	case time.Time:
-		return cast.ToTime(v)
+		return val
 	case []string:
 		return v
 	}
@@ -712,7 +712,7 @@ func (s *Site) Process() (err error) {
 		i18nSources = []source.Input{&source.Filesystem{Base: themeI18nDir}, i18nSources[0]}
 	}
 
-	if err = loadI18n(i18nSources); err != nil {
+	if err = loadI18n(i18nSources, s.Multilingual.GetString("CurrentLanguage")); err != nil {
 		return
 	}
 	s.timerStep("load i18n")
@@ -742,11 +742,11 @@ func (s *Site) setupPrevNext() {
 }
 
 func (s *Site) setupTranslations() {
-	if !viper.GetBool("Multilingual") {
+	if !s.multilingualEnabled() {
 		return
 	}
 
-	currentLang := viper.GetString("RenderLanguage")
+	currentLang := s.Multilingual.GetString("CurrentLanguage")
 
 	allTranslations := pagesToTranslationsMap(s.Pages)
 	assignTranslationsToPages(allTranslations, s.Pages)
@@ -833,7 +833,7 @@ func (s *Site) initialize() (err error) {
 }
 
 func (s *Site) initializeSiteInfo() {
-	params := viper.GetStringMap("Params")
+	params := s.Multilingual.GetStringMap("Params")
 
 	permalinks := make(PermalinkOverrides)
 	for k, v := range viper.GetStringMapString("Permalinks") {
@@ -841,28 +841,32 @@ func (s *Site) initializeSiteInfo() {
 	}
 
 	languagePrefix := ""
-	if viper.GetBool("Multilingual") {
-		languagePrefix = "/" + viper.GetString("RenderLanguage")
+	if s.multilingualEnabled() {
+		languagePrefix = "/" + s.Multilingual.GetString("CurrentLanguage")
+	}
+
+	languages := []string{}
+	if s.Multilingual != nil {
+		languages = s.Multilingual.Languages
 	}
 
 	s.Info = SiteInfo{
-		BaseURL:               template.URL(helpers.SanitizeURLKeepTrailingSlash(viper.GetString("BaseURL"))),
-		Title:                 viper.GetString("Title"),
-		Author:                viper.GetStringMap("author"),
-		Social:                viper.GetStringMapString("social"),
-		LanguageCode:          viper.GetString("languagecode"),
-		Copyright:             viper.GetString("copyright"),
-		DisqusShortname:       viper.GetString("DisqusShortname"),
-		Multilingual:          viper.GetBool("Multilingual"),
-		RenderLanguage:        viper.GetString("RenderLanguage"),
-		LanguagePrefix:        languagePrefix,
-		LinkLanguages:         viper.GetStringSlice("LinkLanguages"),
-		DefaultContentLang:    viper.GetString("DefaultContentLang"),
-		GoogleAnalytics:       viper.GetString("GoogleAnalytics"),
-		RSSLink:               s.permalinkStr(viper.GetString("RSSUri")),
-		BuildDrafts:           viper.GetBool("BuildDrafts"),
-		canonifyURLs:          viper.GetBool("CanonifyURLs"),
-		preserveTaxonomyNames: viper.GetBool("PreserveTaxonomyNames"),
+		BaseURL:                template.URL(helpers.SanitizeURLKeepTrailingSlash(viper.GetString("BaseURL"))),
+		Title:                  s.Multilingual.GetString("Title"),
+		Author:                 s.Multilingual.GetStringMap("author"),
+		Social:                 s.Multilingual.GetStringMapString("social"),
+		LanguageCode:           s.Multilingual.GetString("languagecode"),
+		Copyright:              s.Multilingual.GetString("copyright"),
+		DisqusShortname:        s.Multilingual.GetString("DisqusShortname"),
+		Multilingual:           s.multilingualEnabled(),
+		CurrentLanguage:        s.Multilingual.GetString("CurrentLanguage"),
+		LanguagePrefix:         languagePrefix,
+		Languages:              languages,
+		GoogleAnalytics:        viper.GetString("GoogleAnalytics"),
+		RSSLink:                s.permalinkStr(viper.GetString("RSSUri")),
+		BuildDrafts:            viper.GetBool("BuildDrafts"),
+		canonifyURLs:           viper.GetBool("CanonifyURLs"),
+		preserveTaxonomyNames:  viper.GetBool("PreserveTaxonomyNames"),
 		Pages:      &s.Pages,
 		Files:      &s.Files,
 		Menus:      &s.Menus,
@@ -1597,8 +1601,8 @@ func (s *Site) newTaxonomyNode(t taxRenderInfo) (*Node, string) {
 // `basePath` must not start with http://
 func (s *Site) addMultilingualPrefix(basePath string) string {
 	hadPrefix := strings.HasPrefix(basePath, "/")
-	if viper.GetBool("Multilingual") {
-		basePath = path.Join(viper.GetString("RenderLanguage"), basePath)
+	if s.multilingualEnabled() {
+		basePath = path.Join(s.Multilingual.GetString("CurrentLanguage"), basePath)
 		if hadPrefix {
 			basePath = "/" + basePath
 		}
@@ -1937,7 +1941,7 @@ func (s *Site) RenderRobotsTXT() error {
 	return err
 }
 
-func (s *Site) Stats() {
+func (s *Site) Stats(lang string, t0 time.Time) {
 	jww.FEEDBACK.Println(s.draftStats())
 	jww.FEEDBACK.Println(s.futureStats())
 	jww.FEEDBACK.Printf("%d pages created\n", len(s.Pages))
@@ -1947,6 +1951,10 @@ func (s *Site) Stats() {
 
 	for _, pl := range taxonomies {
 		jww.FEEDBACK.Printf("%d %s created\n", len(s.Taxonomies[pl]), pl)
+	}
+
+	if lang != "" {
+		jww.FEEDBACK.Printf("rendered lang %q in %v ms\n", lang, int(1000*time.Since(t0).Seconds()))
 	}
 }
 

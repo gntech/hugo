@@ -1327,12 +1327,6 @@ func TestMultilingualSwitch(t *testing.T) {
 	viper.Set("Taxonomies", map[string]string{"tag": "tags"})
 	viper.Set("Permalinks", map[string]string{"other": "/somewhere/else/:filename"})
 
-	// Multilingual settings
-	viper.Set("Multilingual", true)
-	viper.Set("RenderLanguage", "en")
-	viper.Set("DefaultContentLang", "fr")
-	viper.Set("paginate", "2")
-
 	// Sources
 	sources := []source.ByteSource{
 		{filepath.FromSlash("sect/doc1.en.md"), []byte(`---
@@ -1385,7 +1379,7 @@ publishdate: "2000-01-05"
 ---
 # doc4
 *du contenu francophone*
-NOTE: should use the DefaultContentLang and mark this doc as 'fr'.
+NOTE: should use the DefaultContentLanguage and mark this doc as 'fr'.
 NOTE: doesn't have any corresponding translation in 'en'
 `)},
 		{filepath.FromSlash("other/doc5.fr.md"), []byte(`---
@@ -1402,7 +1396,17 @@ NOTE: should use the "permalinks" configuration with :filename
 
 	s := &Site{
 		Source: &source.InMemorySource{ByteSource: sources},
+		Multilingual: &Multilingual{
+			config:  viper.New(),
+			enabled: true,
+		},
 	}
+	// Multilingual settings
+	viper.Set("Multilingual", true)
+	s.Multilingual.config.Set("CurrentLanguage", "en")
+	viper.Set("DefaultContentLanguage", "fr")
+	viper.Set("paginate", "2")
+
 	templatePrep(s)
 	s.initializeSiteInfo()
 

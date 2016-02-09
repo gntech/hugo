@@ -46,7 +46,7 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-var mainSite *hugolib.Site
+var mainSites map[string]*hugolib.Site
 
 // userError is an error used to signal different error situations in command handling.
 type commandError struct {
@@ -303,8 +303,7 @@ func LoadDefaultSettings() {
 	viper.SetDefault("DisablePathToLower", false)
 	viper.SetDefault("HasCJKLanguage", false)
 	viper.SetDefault("Multilingual", false)
-	viper.SetDefault("DefaultContentLang", "en")
-	viper.SetDefault("RenderLanguage", "en")
+	viper.SetDefault("DefaultContentLanguage", "en")
 }
 
 // InitializeConfig initializes a config file with sensible default configuration flags.
@@ -455,6 +454,8 @@ func InitializeConfig(subCmdVs ...*cobra.Command) error {
 		jww.ERROR.Printf("Current theme does not support Hugo version %s. Minimum version required is %s\n",
 			helpers.HugoReleaseVersion(), minVersion)
 	}
+
+	readMultilingualConfiguration()
 
 	return nil
 }
@@ -659,31 +660,52 @@ func getDirList() []string {
 }
 
 func buildSite(watching ...bool) (err error) {
-	startTime := time.Now()
-	if mainSite == nil {
-		mainSite = new(hugolib.Site)
+	t0 := time.Now()
+
+	if mainSites == nil {
+		mainSites = make(map[string]*hugolib.Site)
 	}
-	if len(watching) > 0 && watching[0] {
-		mainSite.RunMode.Watching = true
+
+	for _, lang := range langConfigsList {
+		t1 := time.Now()
+		mainSite, present := mainSites[lang]
+		if !present {
+			mainSite = new(hugolib.Site)
+			mainSites[lang] = mainSite
+			mainSite.SetMultilingualConfig(lang, langConfigsList, langConfigs)
+		}
+
+		if len(watching) > 0 && watching[0] {
+			mainSite.RunMode.Watching = true
+		}
+
+		if err := mainSite.Build(); err != nil {
+			return err
+		}
+
+		mainSite.Stats(lang, t1)
 	}
-	err = mainSite.Build()
-	if err != nil {
-		return err
-	}
-	mainSite.Stats()
-	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
+
+	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
 
 	return nil
 }
 
 func rebuildSite(events []fsnotify.Event) error {
-	startTime := time.Now()
-	err := mainSite.ReBuild(events)
-	if err != nil {
-		return err
+	t0 := time.Now()
+
+	for _, lang := range langConfigsList {
+		t1 := time.Now()
+		mainSite := mainSites[lang]
+
+		if err := mainSite.ReBuild(events); err != nil {
+			return err
+		}
+
+		mainSite.Stats(lang, t1)
 	}
-	mainSite.Stats()
-	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
+
+	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
 
 	return nil
 }

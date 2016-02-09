@@ -114,7 +114,7 @@ func NewFile(relpath string) *File {
 	if viper.GetBool("Multilingual") {
 		f.lang = strings.TrimPrefix(filepath.Ext(f.baseName), ".")
 		if f.lang == "" {
-			f.lang = viper.GetString("DefaultContentLang")
+			f.lang = viper.GetString("DefaultContentLanguage")
 		}
 		f.translationBaseName = helpers.Filename(f.baseName)
 	} else {

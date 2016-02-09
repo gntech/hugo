@@ -17,10 +17,9 @@ import (
 	"github.com/nicksnyder/go-i18n/i18n/bundle"
 	"github.com/spf13/hugo/source"
 	"github.com/spf13/hugo/tpl"
-	"github.com/spf13/viper"
 )
 
-func loadI18n(sources []source.Input) (err error) {
+func loadI18n(sources []source.Input, lang string) (err error) {
 	i18nBundle := bundle.New()
 	for _, currentSource := range sources {
 		for _, r := range currentSource.Files() {
@@ -31,7 +30,7 @@ func loadI18n(sources []source.Input) (err error) {
 		}
 	}
 
-	tpl.SetI18nTfunc(viper.GetString("RenderLanguage"), i18nBundle)
+	tpl.SetI18nTfunc(lang, i18nBundle)
 
 	return nil
 }
