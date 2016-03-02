@@ -954,7 +954,6 @@ func (p *Page) FullFilePath() string {
 }
 
 func (p *Page) TargetPath() (outfile string) {
-
 	// Always use URL if it's specified
 	if len(strings.TrimSpace(p.URL)) > 2 {
 		outfile = strings.TrimSpace(p.URL)
@@ -985,7 +984,7 @@ func (p *Page) TargetPath() (outfile string) {
 		outfile = strings.TrimSpace(p.Slug) + "." + p.Extension()
 	} else {
 		// Fall back to filename
-		outfile = helpers.ReplaceExtension(p.Source.LogicalName(), p.Extension())
+		outfile = helpers.ReplaceExtension(p.Source.TranslationBaseName(), p.Extension())
 	}
 
 	return p.addMultilingualFilesystemPrefix(filepath.Join(strings.ToLower(helpers.MakePath(p.Source.Dir())), strings.TrimSpace(outfile)))
