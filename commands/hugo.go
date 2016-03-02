@@ -46,7 +46,7 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-var MainSite *hugolib.Site
+var mainSites map[string]*hugolib.Site
 
 // userError is an error used to signal different error situations in command handling.
 type commandError struct {
@@ -269,6 +269,7 @@ func LoadDefaultSettings() {
 	viper.SetDefault("ArchetypeDir", "archetypes")
 	viper.SetDefault("PublishDir", "public")
 	viper.SetDefault("DataDir", "data")
+	viper.SetDefault("I18nDir", "i18n")
 	viper.SetDefault("ThemesDir", "themes")
 	viper.SetDefault("DefaultLayout", "post")
 	viper.SetDefault("BuildDrafts", false)
@@ -301,6 +302,8 @@ func LoadDefaultSettings() {
 	viper.SetDefault("SectionPagesMenu", "")
 	viper.SetDefault("DisablePathToLower", false)
 	viper.SetDefault("HasCJKLanguage", false)
+	viper.SetDefault("Multilingual", false)
+	viper.SetDefault("DefaultContentLanguage", "en")
 }
 
 // InitializeConfig initializes a config file with sensible default configuration flags.
@@ -452,6 +455,8 @@ func InitializeConfig(subCmdVs ...*cobra.Command) error {
 			helpers.HugoReleaseVersion(), minVersion)
 	}
 
+	readMultilingualConfiguration()
+
 	return nil
 }
 
@@ -594,19 +599,25 @@ func copyStatic() error {
 func getDirList() []string {
 	var a []string
 	dataDir := helpers.AbsPathify(viper.GetString("DataDir"))
+	i18nDir := helpers.AbsPathify(viper.GetString("I18nDir"))
 	layoutDir := helpers.AbsPathify(viper.GetString("LayoutDir"))
 	walker := func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			if path == dataDir && os.IsNotExist(err) {
 				jww.WARN.Println("Skip DataDir:", err)
 				return nil
-
 			}
+
+			if path == i18nDir && os.IsNotExist(err) {
+				jww.WARN.Println("Skip I18nDir:", err)
+				return nil
+			}
+
 			if path == layoutDir && os.IsNotExist(err) {
 				jww.WARN.Println("Skip LayoutDir:", err)
 				return nil
-
 			}
+
 			jww.ERROR.Println("Walker: ", err)
 			return nil
 		}
@@ -639,6 +650,7 @@ func getDirList() []string {
 	}
 
 	filepath.Walk(dataDir, walker)
+	filepath.Walk(i18nDir, walker)
 	filepath.Walk(helpers.AbsPathify(viper.GetString("ContentDir")), walker)
 	filepath.Walk(helpers.AbsPathify(viper.GetString("LayoutDir")), walker)
 	filepath.Walk(helpers.AbsPathify(viper.GetString("StaticDir")), walker)
@@ -650,6 +662,7 @@ func getDirList() []string {
 }
 
 func buildSite(watching ...bool) (err error) {
+<<<<<<< HEAD
 	fmt.Println("Started building site")
 	startTime := time.Now()
 	if MainSite == nil {
@@ -664,11 +677,41 @@ func buildSite(watching ...bool) (err error) {
 	}
 	MainSite.Stats()
 	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
+=======
+	t0 := time.Now()
+
+	if mainSites == nil {
+		mainSites = make(map[string]*hugolib.Site)
+	}
+
+	for _, lang := range langConfigsList {
+		t1 := time.Now()
+		mainSite, present := mainSites[lang]
+		if !present {
+			mainSite = new(hugolib.Site)
+			mainSites[lang] = mainSite
+			mainSite.SetMultilingualConfig(lang, langConfigsList, langConfigs)
+		}
+
+		if len(watching) > 0 && watching[0] {
+			mainSite.RunMode.Watching = true
+		}
+
+		if err := mainSite.Build(); err != nil {
+			return err
+		}
+
+		mainSite.Stats(lang, t1)
+	}
+
+	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
+>>>>>>> abourget/master
 
 	return nil
 }
 
 func rebuildSite(events []fsnotify.Event) error {
+<<<<<<< HEAD
 	startTime := time.Now()
 	err := MainSite.ReBuild(events)
 	if err != nil {
@@ -676,6 +719,22 @@ func rebuildSite(events []fsnotify.Event) error {
 	}
 	MainSite.Stats()
 	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
+=======
+	t0 := time.Now()
+
+	for _, lang := range langConfigsList {
+		t1 := time.Now()
+		mainSite := mainSites[lang]
+
+		if err := mainSite.ReBuild(events); err != nil {
+			return err
+		}
+
+		mainSite.Stats(lang, t1)
+	}
+
+	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
+>>>>>>> abourget/master
 
 	return nil
 }
