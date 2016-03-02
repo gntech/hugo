@@ -473,7 +473,7 @@ func watchConfig() {
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
 		// Force a full rebuild
-		MainSite = nil
+		mainSites = nil
 		utils.CheckErr(buildSite(true))
 		if !viper.GetBool("DisableLiveReload") {
 			// Will block forever trying to write to a channel that nobody is reading if livereload isn't initialized
@@ -662,22 +662,6 @@ func getDirList() []string {
 }
 
 func buildSite(watching ...bool) (err error) {
-<<<<<<< HEAD
-	fmt.Println("Started building site")
-	startTime := time.Now()
-	if MainSite == nil {
-		MainSite = new(hugolib.Site)
-	}
-	if len(watching) > 0 && watching[0] {
-		MainSite.RunMode.Watching = true
-	}
-	err = MainSite.Build()
-	if err != nil {
-		return err
-	}
-	MainSite.Stats()
-	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
-=======
 	t0 := time.Now()
 
 	if mainSites == nil {
@@ -705,21 +689,11 @@ func buildSite(watching ...bool) (err error) {
 	}
 
 	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
->>>>>>> abourget/master
 
 	return nil
 }
 
 func rebuildSite(events []fsnotify.Event) error {
-<<<<<<< HEAD
-	startTime := time.Now()
-	err := MainSite.ReBuild(events)
-	if err != nil {
-		return err
-	}
-	MainSite.Stats()
-	jww.FEEDBACK.Printf("in %v ms\n", int(1000*time.Since(startTime).Seconds()))
-=======
 	t0 := time.Now()
 
 	for _, lang := range langConfigsList {
@@ -734,7 +708,6 @@ func rebuildSite(events []fsnotify.Event) error {
 	}
 
 	jww.FEEDBACK.Printf("total in %v ms\n", int(1000*time.Since(t0).Seconds()))
->>>>>>> abourget/master
 
 	return nil
 }
